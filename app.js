@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   points: "quizo_total_points",
   bestStreak: "quizo_best_streak",
   quizzes: "quizo_quiz_count",
+  sound: "quizo_sound_enabled",
 };
 
 const POINTS = {
@@ -180,7 +181,28 @@ function renderInline(html) {
   return html;
 }
 
+function isSoundEnabled() {
+  const saved = localStorage.getItem(STORAGE_KEYS.sound);
+  return saved == null ? true : saved === "1";
+}
+
+function setSoundEnabled(enabled) {
+  localStorage.setItem(STORAGE_KEYS.sound, enabled ? "1" : "0");
+  updateSoundToggle();
+}
+
+function updateSoundToggle() {
+  const btn = $("btn-sound-toggle");
+  if (!btn) return;
+  const enabled = isSoundEnabled();
+  btn.classList.toggle("muted", !enabled);
+  btn.setAttribute("aria-pressed", String(!enabled));
+  btn.textContent = enabled ? "Sound on" : "Sound off";
+  btn.title = enabled ? "Mute answer sounds" : "Enable answer sounds";
+}
+
 function getAudioContext() {
+  if (!isSoundEnabled()) return null;
   const Ctor = window.AudioContext || window.webkitAudioContext;
   if (!Ctor) return null;
   if (!audioContext) audioContext = new Ctor();
@@ -190,7 +212,7 @@ function getAudioContext() {
   return audioContext;
 }
 
-function playTone(freq, duration, type = "sine", gainValue = 0.04, startAt = 0) {
+function playTone(freq, duration, type = "sine", gainValue = 0.08, startAt = 0) {
   const ctx = getAudioContext();
   if (!ctx) return;
 
@@ -211,13 +233,15 @@ function playTone(freq, duration, type = "sine", gainValue = 0.04, startAt = 0) 
 }
 
 function playCorrectSound() {
-  playTone(523.25, 0.12, "sine", 0.05, 0);
-  playTone(659.25, 0.14, "sine", 0.05, 0.11);
+  if (!isSoundEnabled()) return;
+  playTone(523.25, 0.12, "sine", 0.11, 0);
+  playTone(659.25, 0.14, "sine", 0.11, 0.11);
 }
 
 function playWrongSound() {
-  playTone(220, 0.12, "triangle", 0.05, 0);
-  playTone(174.61, 0.16, "triangle", 0.05, 0.11);
+  if (!isSoundEnabled()) return;
+  playTone(220, 0.12, "triangle", 0.1, 0);
+  playTone(174.61, 0.16, "triangle", 0.1, 0.11);
 }
 
 // ─── Interactive FX ────────────────────────────────────────
@@ -887,6 +911,12 @@ function confirmReset() {
 
 function init() {
   renderHome();
+  updateSoundToggle();
+
+  $("btn-sound-toggle").addEventListener("click", () => {
+    setSoundEnabled(!isSoundEnabled());
+    showToast(isSoundEnabled() ? "Sound enabled" : "Sound muted", "info");
+  });
 
   $("btn-mixed").addEventListener("click", () => {
     openSetup("mixed", { count: 15 });
