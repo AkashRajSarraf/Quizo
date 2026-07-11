@@ -40,6 +40,7 @@ let state = null;
 /** @type {ReturnType<typeof setInterval> | null} */
 let timerInterval = null;
 let timerRemaining = 0;
+let audioContext = null;
 
 // ─── Helpers ───────────────────────────────────────────────
 
@@ -177,6 +178,46 @@ function filterQuestions(topicId, difficulty) {
 
 function renderInline(html) {
   return html;
+}
+
+function getAudioContext() {
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (!Ctor) return null;
+  if (!audioContext) audioContext = new Ctor();
+  if (audioContext.state === "suspended") {
+    audioContext.resume().catch(() => {});
+  }
+  return audioContext;
+}
+
+function playTone(freq, duration, type = "sine", gainValue = 0.04, startAt = 0) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime + startAt);
+  gain.gain.exponentialRampToValueAtTime(gainValue, ctx.currentTime + startAt + 0.02);
+  gain.gain.exponentialRampToValueAtTime(
+    0.0001,
+    ctx.currentTime + startAt + duration
+  );
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(ctx.currentTime + startAt);
+  osc.stop(ctx.currentTime + startAt + duration + 0.03);
+}
+
+function playCorrectSound() {
+  playTone(523.25, 0.12, "sine", 0.05, 0);
+  playTone(659.25, 0.14, "sine", 0.05, 0.11);
+}
+
+function playWrongSound() {
+  playTone(220, 0.12, "triangle", 0.05, 0);
+  playTone(174.61, 0.16, "triangle", 0.05, 0.11);
 }
 
 // ─── Interactive FX ────────────────────────────────────────
@@ -592,6 +633,7 @@ function selectAnswer(choice, clickedBtn) {
   const cy = rect.top + rect.height / 2;
 
   if (correct) {
+    playCorrectSound();
     floatPoints(`+${earned}`, cx, cy);
     spawnSparks(cx, cy, state.streak >= 3 ? "#fb7185" : "#fbbf24");
     showToast(`${breakdown}`, "points");
@@ -599,6 +641,7 @@ function selectAnswer(choice, clickedBtn) {
       `<strong style="color:var(--green)">Correct! +${earned} pts</strong> — ` +
       renderInline(q.explanation);
   } else {
+    playWrongSound();
     floatPoints("+0", cx, cy, true);
     showToast("Incorrect · +0 pts", "error");
     $("explanation-text").innerHTML =
