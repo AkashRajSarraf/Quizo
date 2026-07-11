@@ -212,7 +212,7 @@ function getAudioContext() {
   return audioContext;
 }
 
-function playTone(freq, duration, type = "sine", gainValue = 0.08, startAt = 0) {
+function playTone(freq, duration, type = "sine", gainValue = 0.14, startAt = 0) {
   const ctx = getAudioContext();
   if (!ctx) return;
 
@@ -221,7 +221,7 @@ function playTone(freq, duration, type = "sine", gainValue = 0.08, startAt = 0) 
   osc.type = type;
   osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
   gain.gain.setValueAtTime(0.0001, ctx.currentTime + startAt);
-  gain.gain.exponentialRampToValueAtTime(gainValue, ctx.currentTime + startAt + 0.02);
+  gain.gain.exponentialRampToValueAtTime(gainValue, ctx.currentTime + startAt + 0.012);
   gain.gain.exponentialRampToValueAtTime(
     0.0001,
     ctx.currentTime + startAt + duration
@@ -234,14 +234,19 @@ function playTone(freq, duration, type = "sine", gainValue = 0.08, startAt = 0) 
 
 function playCorrectSound() {
   if (!isSoundEnabled()) return;
-  playTone(523.25, 0.12, "sine", 0.11, 0);
-  playTone(659.25, 0.14, "sine", 0.11, 0.11);
+  // Bright, celebratory major chord with a final high sparkle.
+  playTone(523.25, 0.24, "sine", 0.18, 0);
+  playTone(659.25, 0.26, "sine", 0.16, 0.06);
+  playTone(783.99, 0.34, "sine", 0.18, 0.12);
+  playTone(1046.5, 0.38, "triangle", 0.1, 0.2);
 }
 
 function playWrongSound() {
   if (!isSoundEnabled()) return;
-  playTone(220, 0.12, "triangle", 0.1, 0);
-  playTone(174.61, 0.16, "triangle", 0.1, 0.11);
+  // A gentle, descending minor chime that signals a wrong answer.
+  playTone(392, 0.2, "triangle", 0.15, 0);
+  playTone(329.63, 0.24, "triangle", 0.14, 0.13);
+  playTone(261.63, 0.38, "sine", 0.16, 0.28);
 }
 
 // ─── Interactive FX ────────────────────────────────────────
