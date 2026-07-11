@@ -317,3 +317,31 @@ Until the revamp starts, the existing root files (`index.html`, `app.js`, `quest
 - Profiles, multi-user ranks, compare, and leaderboards need **auth + API + PostgreSQL**.  
 - Best path for this project: **React + TypeScript frontend**, **Spring Boot API**, **server-side scoring**, phased delivery from auth → stats → profile → leaderboard → compare.  
 - This document is the source of truth for that plan until implementation begins.
+
+
+Yes. You don’t need Spring Boot.
+
+Best easy + fast + secure picks
+
+┌─────────────────────────────────────┬─────────────────────────────────────────────────────────────────────┐
+│ Stack                               │ Why                                                                 │
+├─────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ Supabase (Postgres + Auth)          │ Easiest. Auth, DB, security rules built-in. Almost no backend code. │
+├─────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ Firebase                            │ Same idea. Very fast to ship. Good for leaderboards.                │
+├─────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ Next.js API + Prisma + Postgres     │ One project, TypeScript, solid and simple.                          │
+├─────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ Node (NestJS or Express) + Postgres │ Fast to build; Nest is more structured/secure by default.           │
+├─────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ Go (Fiber/Echo)                     │ Very fast runtime; a bit more work than Node/Supabase.              │
+├─────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ Python FastAPI                      │ Easy, fast enough, clear APIs.                                      │
+└─────────────────────────────────────┴─────────────────────────────────────────────────────────────────────┘
+
+Practical recommendation for Quizo
+• Want easiest: Supabase
+• Want full control, still easy: Next.js + Postgres or FastAPI + Postgres
+• Spring Boot is great for learning Java/Spring, not the fastest path to ship.
+
+“Better” depends on goal: learn Spring → keep Spring. Ship multi-user quiz fast → Supabase or Next.js.
