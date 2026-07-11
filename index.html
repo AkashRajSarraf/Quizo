@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quizo — Java & Spring Boot Revision</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+  <div id="fx-layer" aria-hidden="true"></div>
+  <div id="toast-stack" aria-live="polite"></div>
+
+  <div id="app">
+    <!-- HOME -->
+    <section id="screen-home" class="screen active">
+      <header class="hero">
+        <div class="logo">
+          <span class="logo-icon">{ }</span>
+          <span class="logo-text">Quizo</span>
+        </div>
+        <p class="tagline">
+          Master Java &amp; Spring Boot with focused revision quizzes
+          <br />
+          <span class="pill">☕ Java · 🌱 Spring · ⭐ Points &amp; streaks</span>
+        </p>
+      </header>
+
+      <!-- Points hub -->
+      <div class="points-hub" id="points-hub">
+        <div class="points-hub-main">
+          <div class="points-level-ring" id="level-ring">
+            <svg viewBox="0 0 80 80">
+              <circle class="lvl-bg" cx="40" cy="40" r="34" />
+              <circle class="lvl-fg" id="lvl-fg" cx="40" cy="40" r="34" />
+            </svg>
+            <div class="lvl-center">
+              <span class="lvl-num" id="stat-level">1</span>
+              <span class="lvl-label">LVL</span>
+            </div>
+          </div>
+          <div class="points-hub-info">
+            <div class="points-total-row">
+              <span class="points-star">★</span>
+              <span class="points-total" id="stat-points">0</span>
+              <span class="points-unit">pts</span>
+            </div>
+            <div class="points-xp-meta">
+              <span id="stat-xp-label">0 / 100 to next level</span>
+            </div>
+            <div class="xp-bar">
+              <div class="xp-bar-fill" id="xp-bar-fill"></div>
+            </div>
+          </div>
+        </div>
+        <div class="points-hub-actions">
+          <div class="points-mini-stats">
+            <div class="mini-stat">
+              <span class="mini-val" id="stat-best">—</span>
+              <span class="mini-lbl">Best</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-val" id="stat-streak-best">0</span>
+              <span class="mini-lbl">Best streak</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-val" id="stat-quizzes">0</span>
+              <span class="mini-lbl">Quizzes</span>
+            </div>
+          </div>
+          <button type="button" class="btn-reset" id="btn-reset-points" title="Reset points">
+            ↺ Reset points
+          </button>
+        </div>
+      </div>
+
+      <div class="stats-bar" id="home-stats">
+        <div class="stat">
+          <span class="stat-value" id="stat-total-qs">0</span>
+          <span class="stat-label">Questions</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-topics">0</span>
+          <span class="stat-label">Topics</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-rank">Rookie</span>
+          <span class="stat-label">Rank</span>
+        </div>
+      </div>
+
+      <div class="section-label">Choose a topic</div>
+      <div class="topic-grid" id="topic-grid"></div>
+
+      <div class="section-label" style="margin-top: 1.5rem">Or jump in</div>
+      <div class="quick-actions">
+        <button class="btn btn-primary btn-lg interactive-btn" id="btn-mixed">
+          <span class="btn-icon">⚡</span>
+          Mixed Practice
+          <span class="btn-hint">All topics · choose count &amp; timer</span>
+        </button>
+        <button class="btn btn-secondary btn-lg interactive-btn" id="btn-wrong">
+          <span class="btn-icon">🔄</span>
+          Review Mistakes
+          <span class="btn-hint" id="wrong-count">No mistakes yet</span>
+        </button>
+      </div>
+
+      <details class="points-guide">
+        <summary>How points work</summary>
+        <ul>
+          <li><strong>Easy</strong> +10 · <strong>Medium</strong> +20 · <strong>Hard</strong> +30</li>
+          <li><strong>Streak</strong> +5 per correct in a row (after the first)</li>
+          <li><strong>Speed bonus</strong> up to +15 when a timer is on</li>
+          <li>Wrong / timeout = 0 pts for that question</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- SETUP -->
+    <section id="screen-setup" class="screen">
+      <button class="back-btn interactive-btn" id="setup-back" type="button">← Back</button>
+      <h2 class="screen-title" id="setup-title">Topic</h2>
+      <p class="screen-desc" id="setup-desc"></p>
+
+      <div class="setup-card">
+        <label class="field-label">Number of questions</label>
+        <div class="count-picker" id="count-picker">
+          <button type="button" data-count="5" class="count-btn">5</button>
+          <button type="button" data-count="10" class="count-btn active">10</button>
+          <button type="button" data-count="15" class="count-btn">15</button>
+          <button type="button" data-count="all" class="count-btn">All</button>
+        </div>
+
+        <label class="field-label">Difficulty</label>
+        <div class="diff-picker" id="diff-picker">
+          <button type="button" data-diff="all" class="diff-btn active">All</button>
+          <button type="button" data-diff="easy" class="diff-btn">Easy</button>
+          <button type="button" data-diff="medium" class="diff-btn">Medium</button>
+          <button type="button" data-diff="hard" class="diff-btn">Hard</button>
+        </div>
+
+        <label class="field-label">Timer (per question)</label>
+        <div class="timer-picker" id="timer-picker">
+          <button type="button" data-timer="off" class="timer-btn active">Off</button>
+          <button type="button" data-timer="15" class="timer-btn">15s</button>
+          <button type="button" data-timer="30" class="timer-btn">30s</button>
+          <button type="button" data-timer="45" class="timer-btn">45s</button>
+          <button type="button" data-timer="60" class="timer-btn">60s</button>
+        </div>
+        <p class="field-hint">Optional. Timer also unlocks speed bonus points.</p>
+
+        <p class="setup-meta" id="setup-meta">10 questions available</p>
+        <button class="btn btn-primary btn-block interactive-btn" id="btn-start-quiz">Start Quiz</button>
+      </div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="screen-quiz" class="screen">
+      <div class="quiz-top">
+        <div class="quiz-score-bar">
+          <div class="run-points" id="run-points" title="Points this run">
+            <span class="run-star">★</span>
+            <span id="run-points-val">0</span>
+          </div>
+          <div class="run-streak hidden" id="run-streak">
+            <span class="streak-fire">🔥</span>
+            <span id="run-streak-val">0</span>
+            <span class="streak-lbl">streak</span>
+          </div>
+        </div>
+        <div class="quiz-progress-wrap">
+          <div class="quiz-progress-bar">
+            <div class="quiz-progress-fill" id="progress-fill"></div>
+          </div>
+          <span class="quiz-progress-text" id="progress-text">1 / 10</span>
+        </div>
+        <div class="quiz-meta-row">
+          <span class="badge" id="quiz-topic-badge">Java</span>
+          <span class="badge badge-diff" id="quiz-diff-badge">Medium</span>
+          <div class="quiz-timer hidden" id="quiz-timer" aria-live="polite">
+            <span class="timer-icon">⏱</span>
+            <span class="timer-value" id="timer-value">30</span>
+            <div class="timer-bar-wrap">
+              <div class="timer-bar-fill" id="timer-bar-fill"></div>
+            </div>
+          </div>
+          <button type="button" class="btn-text" id="btn-quit">Quit</button>
+        </div>
+      </div>
+
+      <div class="question-card" id="question-card">
+        <div class="pts-preview" id="pts-preview">+20 pts</div>
+        <p class="question-text" id="question-text"></p>
+        <div class="options" id="options"></div>
+        <div class="explanation hidden" id="explanation">
+          <div class="explanation-label">Explanation</div>
+          <p id="explanation-text"></p>
+        </div>
+      </div>
+
+      <div class="quiz-footer">
+        <button class="btn btn-primary btn-block interactive-btn hidden" id="btn-next">Next Question</button>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="screen-results" class="screen">
+      <div class="results-hero">
+        <div class="score-ring" id="score-ring">
+          <svg viewBox="0 0 120 120">
+            <circle class="ring-bg" cx="60" cy="60" r="52" />
+            <circle class="ring-fg" id="ring-fg" cx="60" cy="60" r="52" />
+          </svg>
+          <div class="score-center">
+            <span class="score-pct" id="score-pct">0%</span>
+            <span class="score-frac" id="score-frac">0/0</span>
+          </div>
+        </div>
+        <div class="results-points-earned" id="results-points-earned">
+          <span class="rpe-label">Points earned</span>
+          <span class="rpe-value" id="rpe-value">+0</span>
+        </div>
+        <h2 class="results-title" id="results-title">Nice work!</h2>
+        <p class="results-sub" id="results-sub"></p>
+      </div>
+
+      <div class="results-breakdown" id="results-breakdown"></div>
+
+      <div class="results-actions">
+        <button class="btn btn-primary interactive-btn" id="btn-retry">Try Again</button>
+        <button class="btn btn-secondary interactive-btn" id="btn-review">Review Answers</button>
+        <button class="btn btn-ghost interactive-btn" id="btn-home">Home</button>
+      </div>
+    </section>
+
+    <!-- REVIEW -->
+    <section id="screen-review" class="screen">
+      <button class="back-btn interactive-btn" id="review-back" type="button">← Results</button>
+      <h2 class="screen-title">Answer Review</h2>
+      <div class="review-list" id="review-list"></div>
+      <button class="btn btn-primary btn-block interactive-btn" id="btn-review-home" style="margin-top: 1.5rem">Back to Home</button>
+    </section>
+  </div>
+
+  <!-- Reset modal -->
+  <div class="modal-backdrop hidden" id="reset-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+    <div class="modal-card">
+      <h3 id="reset-title">Reset points?</h3>
+      <p>This clears your total points, level progress, best streak, and quiz count. Question progress (mistakes) stays unless you clear that too.</p>
+      <label class="modal-check">
+        <input type="checkbox" id="reset-also-mistakes" />
+        Also clear Review Mistakes &amp; best score %
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost interactive-btn" id="btn-reset-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger interactive-btn" id="btn-reset-confirm">Reset now</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
