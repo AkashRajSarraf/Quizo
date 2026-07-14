@@ -212,6 +212,16 @@ const EXPANSION_QUESTION_DATA = {
     ["easy", "What does spring-boot:run do in a Maven project?", "Runs the Spring Boot application", "Builds a Docker image only", "Executes database migrations only", "Creates a Git branch", "The Spring Boot Maven plugin can launch the app with the project classpath."],
     ["hard", "What is the usual purpose of spring-boot:build-image?", "Building an OCI container image using buildpacks", "Generating a JVM heap dump", "Creating only a JAR manifest", "Publishing Actuator metrics", "The plugin can create container images without requiring a handwritten Dockerfile."],
     ["medium", "What does logging.level.com.example=DEBUG configure?", "The log level for a package or logger", "The JVM debug port", "A database isolation level", "The HTTP response level", "Package-specific log levels help diagnose a targeted part of an application."],
+    ["easy", "What does @EnableScheduling allow in a Spring Boot application?", "Scheduling methods annotated with @Scheduled", "Enabling database migrations", "Starting the embedded server", "Loading every profile", "It enables Spring's scheduled-task infrastructure."],
+    ["medium", "Which property commonly sets a maximum multipart upload file size?", "spring.servlet.multipart.max-file-size", "server.upload.maximum", "spring.files.limit", "multipart.file.size", "Spring Boot exposes multipart size settings under spring.servlet.multipart."],
+    ["medium", "What does @Scheduled(fixedRate = ...) define?", "A task that runs repeatedly at a fixed rate", "A one-time startup task", "A REST endpoint timeout", "A database polling query", "Scheduled tasks need scheduling enabled and should avoid long blocking work on the scheduler."],
+    ["hard", "What is the benefit of Spring Boot's dependency management?", "It supplies compatible dependency versions", "It removes the need for a build tool", "It disables transitive dependencies", "It packages all code into one class", "The BOM helps keep starter-related libraries compatible."],
+    ["easy", "What does the application.properties file usually contain?", "External application configuration", "Java source code", "Database records", "Only test results", "Spring Boot reads standard configuration files during startup."],
+    ["medium", "What does @AutoConfigureMockMvc add to a Spring Boot test?", "MockMvc support for testing MVC requests", "A production web server", "An in-memory database", "Automatic JWT creation", "It is commonly combined with @SpringBootTest for MVC integration tests."],
+    ["hard", "Why should a Spring Boot application use structured logging in production?", "It makes log events easier to search and analyze", "It prevents exceptions", "It removes all log volume", "It replaces monitoring", "Structured fields make logs more useful for centralized observability tools."],
+    ["medium", "What does spring-boot-starter-validation provide?", "Bean Validation support for application input and configuration", "Database transaction management", "A reactive HTTP server", "OAuth login pages", "It supplies validation APIs and an implementation used with constraints such as @NotBlank."],
+    ["easy", "What does @RestControllerAdvice commonly help centralize?", "REST API exception handling", "JPA entity scanning", "JVM garbage collection", "Maven dependency resolution", "It combines controller advice with response-body behavior for API error handlers."],
+    ["hard", "What is a readiness health check intended to indicate?", "Whether an application is ready to receive traffic", "Whether a user is logged in", "Whether a build completed", "Whether all logs are debug level", "Orchestrators can use readiness to avoid sending traffic to an app that is still starting or unavailable."],
   ],
   "spring-data": [
     ["easy", "What does @Id mark on a JPA entity?", "Its primary key field", "A JSON property only", "A Spring bean name", "A HTTP path variable", "Every entity needs an identifier that uniquely identifies persistent rows."],
@@ -282,26 +292,28 @@ const QUESTION_ID_PREFIXES = {
   "spring-security": "ss",
 };
 
-Object.entries(EXPANSION_QUESTION_DATA).forEach(([topic, rows]) => {
-  const existingCount = QUESTIONS.filter((question) => question.topic === topic).length;
-  rows.forEach(([difficulty, question, correct, wrongOne, wrongTwo, wrongThree, explanation], index) => {
-    const answer = (existingCount + index) % 4;
-    const options = [wrongOne, wrongTwo, wrongThree];
-    options.splice(answer, 0, correct);
-    QUESTIONS.push({
-      id: `${QUESTION_ID_PREFIXES[topic]}${existingCount + index + 1}`,
-      topic,
-      difficulty,
-      question,
-      options,
-      answer,
-      explanation,
+function appendExpansionQuestions() {
+  Object.entries(EXPANSION_QUESTION_DATA).forEach(([topic, rows]) => {
+    const existingCount = QUESTIONS.filter((question) => question.topic === topic).length;
+    rows.forEach(([difficulty, question, correct, wrongOne, wrongTwo, wrongThree, explanation], index) => {
+      const answer = (existingCount + index) % 4;
+      const options = [wrongOne, wrongTwo, wrongThree];
+      options.splice(answer, 0, correct);
+      QUESTIONS.push({
+        id: `${QUESTION_ID_PREFIXES[topic]}${existingCount + index + 1}`,
+        topic,
+        difficulty,
+        question,
+        options,
+        answer,
+        explanation,
+      });
     });
   });
-});
 
-if (QUESTIONS.length < 350) {
-  throw new Error("Quizo requires at least 350 questions.");
+  if (QUESTIONS.length < 350) {
+    throw new Error("Quizo requires at least 350 questions.");
+  }
 }
 
 const QUESTIONS = [
@@ -2548,3 +2560,5 @@ const QUESTIONS = [
     explanation: "Encode on registration/password change. On login, use matches(raw, encoded) — never re-encode and compare strings directly if salts differ.",
   },
 ];
+
+appendExpansionQuestions();
