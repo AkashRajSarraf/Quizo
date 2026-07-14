@@ -111,6 +111,11 @@
           Review Mistakes
           <span class="btn-hint" id="wrong-count">No mistakes yet</span>
         </button>
+        <button class="btn btn-pdf btn-lg interactive-btn" id="btn-pdf" type="button">
+          <span class="btn-icon">📄</span>
+          Create MCQs from a PDF
+          <span class="btn-hint">Local-only · choose Easy, Medium, or Hard</span>
+        </button>
       </div>
 
       <details class="points-guide">
@@ -122,6 +127,44 @@
           <li>Wrong / timeout = 0 pts for that question</li>
         </ul>
       </details>
+    </section>
+
+    <!-- PDF MCQ GENERATOR -->
+    <section id="screen-pdf" class="screen">
+      <button class="back-btn interactive-btn" id="pdf-back" type="button">← Back</button>
+      <h2 class="screen-title">PDF to MCQ</h2>
+      <p class="screen-desc">Choose a text-based PDF to make a quiz from its content. The file is processed only in your browser and is never uploaded.</p>
+
+      <div class="setup-card pdf-card">
+        <label class="field-label" for="pdf-file">PDF document</label>
+        <label class="pdf-file-picker" for="pdf-file">
+          <span class="pdf-file-icon">↑</span>
+          <span>
+            <strong>Choose a PDF</strong>
+            <small id="pdf-file-name">Text-based PDF, up to 25 MB</small>
+          </span>
+        </label>
+        <input id="pdf-file" type="file" accept="application/pdf,.pdf" hidden />
+
+        <label class="field-label">Number of MCQs</label>
+        <div class="count-picker" id="pdf-count-picker">
+          <button type="button" data-pdf-count="5" class="count-btn">5</button>
+          <button type="button" data-pdf-count="10" class="count-btn active">10</button>
+          <button type="button" data-pdf-count="15" class="count-btn">15</button>
+          <button type="button" data-pdf-count="20" class="count-btn">20</button>
+        </div>
+
+        <label class="field-label">MCQ difficulty</label>
+        <div class="diff-picker" id="pdf-difficulty-picker">
+          <button type="button" data-pdf-difficulty="easy" class="diff-btn">Easy</button>
+          <button type="button" data-pdf-difficulty="medium" class="diff-btn active">Medium</button>
+          <button type="button" data-pdf-difficulty="hard" class="diff-btn">Hard</button>
+        </div>
+        <p class="field-hint">Easy uses direct recall; Medium and Hard use longer, less obvious source excerpts. All answer options come from the PDF.</p>
+
+        <p class="pdf-status" id="pdf-status" aria-live="polite">Select a PDF to begin.</p>
+        <button class="btn btn-primary btn-block interactive-btn" id="btn-generate-pdf" type="button" disabled>Generate MCQs</button>
+      </div>
     </section>
 
     <!-- SETUP -->
@@ -266,6 +309,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="questions.js"></script>
   <script src="app.js"></script>
 </body>

@@ -42,6 +42,12 @@ let state = null;
 let timerInterval = null;
 let timerRemaining = 0;
 let audioContext = null;
+let pdfGeneratedQuestions = [];
+
+const pdfGeneratorSettings = {
+  count: 10,
+  difficulty: "medium",
+};
 
 // ─── Helpers ───────────────────────────────────────────────
 
@@ -175,6 +181,164 @@ function filterQuestions(topicId, difficulty) {
     pool = pool.filter((q) => q.difficulty === difficulty);
   }
   return pool;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => {
+    const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+    return entities[char];
+  });
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function extractPdfText(file) {
+  if (!window.pdfjsLib) {
+    throw new Error("The PDF reader could not load. Check your internet connection and refresh the page.");
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    throw new Error("Please choose a PDF smaller than 25 MB.");
+  }
+
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const pdf = await window.pdfjsLib.getDocument({ data: bytes }).promise;
+  const pageCount = Math.min(pdf.numPages, 50);
+  const pages = [];
+
+  for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item) => item.str).join(" "));
+  }
+
+  return { text: pages.join(" ").replace(/\s+/g, " ").trim(), pageCount, totalPages: pdf.numPages };
+}
+
+function createPdfMcqs(text, difficulty, requestedCount) {
+  const stopWords = new Set([
+    "about", "after", "again", "also", "and", "are", "been", "between", "but", "can", "could", "each", "for", "from", "have", "into", "its", "more", "most", "not", "only", "other", "over", "such", "than", "that", "the", "their", "there", "these", "this", "those", "through", "under", "was", "were", "when", "where", "which", "while", "with", "would", "your",
+  ]);
+  const sourceSentences = (text.match(/[^.!?]+[.!?]+/g) || [])
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length >= 60 && sentence.length <= 280);
+  const termsByKey = new Map();
+
+  (text.match(/[A-Za-z][A-Za-z0-9+#.-]{3,}/g) || []).forEach((term) => {
+    const key = term.toLowerCase();
+    if (stopWords.has(key)) return;
+    const entry = termsByKey.get(key) || { value: term, count: 0 };
+    entry.count += 1;
+    termsByKey.set(key, entry);
+  });
+
+  const termPool = [...termsByKey.values()]
+    .filter((entry) => entry.count >= 1)
+    .sort((a, b) => b.count - a.count || b.value.length - a.value.length)
+    .map((entry) => entry.value);
+
+  if (sourceSentences.length < 3 || termPool.length < 4) {
+    throw new Error("This PDF does not contain enough selectable text to create MCQs. Try a text-based PDF with fuller sentences.");
+  }
+
+  const rankedSentences = sourceSentences
+    .map((sentence) => ({ sentence, score: sentence.length }))
+    .sort((a, b) =>
+      difficulty === "easy" ? a.score - b.score : difficulty === "hard" ? b.score - a.score : 0
+    );
+  const questions = [];
+  const usedSentences = new Set();
+
+  for (let cursor = 0; cursor < rankedSentences.length && questions.length < requestedCount; cursor += 1) {
+    const sentence = rankedSentences[cursor].sentence;
+    if (usedSentences.has(sentence)) continue;
+    const sentenceTerms = [...new Set((sentence.match(/[A-Za-z][A-Za-z0-9+#.-]{3,}/g) || [])
+      .filter((term) => termsByKey.has(term.toLowerCase())))]
+      .sort((a, b) => difficulty === "hard" ? b.length - a.length : a.length - b.length);
+    const targetIndex = difficulty === "easy" ? 0 : difficulty === "medium" ? Math.floor(sentenceTerms.length / 2) : 0;
+    const correct = sentenceTerms[targetIndex];
+    if (!correct || correct.length < 4) continue;
+
+    const distractors = termPool
+      .filter((term) => term.toLowerCase() !== correct.toLowerCase() && !sentence.toLowerCase().includes(term.toLowerCase()))
+      .slice(0, 3);
+    if (distractors.length < 3) continue;
+
+    const cloze = sentence.replace(new RegExp(`\\b${escapeRegExp(correct)}\\b`, "i"), "_____");
+    const options = shuffle([correct, ...distractors]);
+    questions.push({
+      id: `pdf-${Date.now()}-${questions.length + 1}`,
+      topic: "PDF study",
+      difficulty,
+      question: `According to your PDF, which term completes this statement?<br><em>${escapeHtml(cloze)}</em>`,
+      options: options.map(escapeHtml),
+      answer: options.indexOf(correct),
+      explanation: `Source excerpt: ${escapeHtml(sentence)}`,
+      source: "pdf",
+    });
+    usedSentences.add(sentence);
+  }
+
+  if (questions.length === 0) {
+    throw new Error("No suitable MCQs could be created from this PDF. Try a document with longer explanatory text.");
+  }
+  return questions;
+}
+
+function startPdfQuiz() {
+  if (pdfGeneratedQuestions.length === 0) return;
+  const pool = shuffle(pdfGeneratedQuestions);
+  state = {
+    topicId: "pdf",
+    questions: pool,
+    index: 0,
+    answers: Array(pool.length).fill(null),
+    timedOut: Array(pool.length).fill(false),
+    pointsEarned: Array(pool.length).fill(0),
+    count: pool.length,
+    difficulty: pdfGeneratorSettings.difficulty,
+    timerSeconds: null,
+    runPoints: 0,
+    streak: 0,
+    maxStreak: 0,
+    questionStartedAt: 0,
+  };
+  updateRunScoreUI();
+  showScreen("screen-quiz");
+  renderQuestion();
+}
+
+async function generatePdfQuiz() {
+  const file = $("pdf-file").files[0];
+  const button = $("btn-generate-pdf");
+  const status = $("pdf-status");
+  if (!file) return;
+
+  button.disabled = true;
+  status.textContent = "Reading your PDF locally…";
+  try {
+    const result = await extractPdfText(file);
+    if (!result.text) {
+      throw new Error("No selectable text was found. This looks like a scanned PDF; run OCR on it first.");
+    }
+    status.textContent = "Creating MCQs from the PDF text…";
+    pdfGeneratedQuestions = createPdfMcqs(
+      result.text,
+      pdfGeneratorSettings.difficulty,
+      pdfGeneratorSettings.count
+    );
+    const pageNote = result.totalPages > result.pageCount ? ` from the first ${result.pageCount} pages` : "";
+    status.textContent = `${pdfGeneratedQuestions.length} ${pdfGeneratorSettings.difficulty} MCQs created${pageNote}. Starting quiz…`;
+    showToast(`${pdfGeneratedQuestions.length} PDF MCQs ready`, "success");
+    startPdfQuiz();
+  } catch (error) {
+    status.textContent = error.message || "The PDF could not be read.";
+  } finally {
+    button.disabled = !$("pdf-file").files[0];
+  }
 }
 
 function renderInline(html) {
@@ -617,7 +781,7 @@ function selectAnswer(choice, clickedBtn) {
   let breakdown = "";
 
   if (correct) {
-    removeWrong(q.id);
+    if (q.source !== "pdf") removeWrong(q.id);
     state.streak += 1;
     state.maxStreak = Math.max(state.maxStreak, state.streak);
 
@@ -630,7 +794,7 @@ function selectAnswer(choice, clickedBtn) {
     if (streakPts) breakdown += ` · streak +${streakPts}`;
     if (speed) breakdown += ` · speed +${speed}`;
   } else {
-    addWrong(q.id);
+    if (q.source !== "pdf") addWrong(q.id);
     state.streak = 0;
     earned = 0;
   }
@@ -931,6 +1095,40 @@ function init() {
     openSetup("wrong");
   });
 
+  $("btn-pdf").addEventListener("click", () => {
+    showScreen("screen-pdf");
+  });
+
+  $("pdf-back").addEventListener("click", () => {
+    renderHome();
+    showScreen("screen-home");
+  });
+
+  $("pdf-file").addEventListener("change", () => {
+    const file = $("pdf-file").files[0];
+    $("pdf-file-name").textContent = file ? file.name : "Text-based PDF, up to 25 MB";
+    $("pdf-status").textContent = file ? "Ready to generate MCQs from this PDF." : "Select a PDF to begin.";
+    $("btn-generate-pdf").disabled = !file;
+  });
+
+  document.querySelectorAll("[data-pdf-count]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-pdf-count]").forEach((item) => item.classList.remove("active"));
+      btn.classList.add("active");
+      pdfGeneratorSettings.count = Number(btn.dataset.pdfCount);
+    });
+  });
+
+  document.querySelectorAll("[data-pdf-difficulty]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-pdf-difficulty]").forEach((item) => item.classList.remove("active"));
+      btn.classList.add("active");
+      pdfGeneratorSettings.difficulty = btn.dataset.pdfDifficulty;
+    });
+  });
+
+  $("btn-generate-pdf").addEventListener("click", generatePdfQuiz);
+
   $("setup-back").addEventListener("click", () => {
     stopTimer();
     renderHome();
@@ -992,6 +1190,10 @@ function init() {
   $("btn-retry").addEventListener("click", () => {
     if (!state) {
       showScreen("screen-home");
+      return;
+    }
+    if (state.topicId === "pdf") {
+      startPdfQuiz();
       return;
     }
     openSetup(state.topicId, {
